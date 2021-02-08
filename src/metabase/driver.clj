@@ -594,3 +594,31 @@
   {:added "0.37.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti get-sensitive-fields
+  "Return the set of sensitive fields for the driver"
+  {:added "0.39.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(def ^:const default-sensitive-fields
+  "Set of fields that should always be obfuscated in API responses, as they contain sensitive data."
+  #{:password :pass :tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase
+    :access-token :refresh-token :service-account-json})
+
+(defn default-get-sensitive-fields
+  "Gets all sensitive fields that should be redacted in API responses. This includes everything from the
+   sensitive-fields set, along with any custom properties from connection-properties which are marked with a
+   :type :password."
+  [driver]
+  (let [all-fields      (connection-properties driver)
+        password-fields (filter #(= (get % :type) :password) all-fields)]
+    (into default-sensitive-fields (map (comp keyword :name) password-fields))))
+
+(defmethod get-sensitive-fields ::driver
+  [driver]
+  (default-get-sensitive-fields driver))
+
+(defmethod get-sensitive-fields nil
+  [_]
+  default-sensitive-fields)
