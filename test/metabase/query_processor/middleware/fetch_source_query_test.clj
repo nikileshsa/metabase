@@ -173,6 +173,10 @@
         (mt/with-temp Card [{card-2-id :id} {:dataset_query
                                              (mt/mbql-query nil
                                                {:source-table (str "card__" card-id), :limit 200})}]
+          ;; TODO -- FIXME
+          #_(testing "Sanity check: Card auto-calculated result metadata should have the correct field_refs"
+              (is (= metadata
+                     (db/select-one-field :result_metadata Card :id card-2-id))))
           (is (= (mt/mbql-query venues
                    {:joins [{:alias           "c"
                              :condition       [:= $category_id &c.$categories.id]
