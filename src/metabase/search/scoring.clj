@@ -117,6 +117,16 @@
   [[score-1 _result-1] [score-2 _result-2]]
   (compare score-1 score-2))
 
+(defn- serialize
+  "Massage the raw result from the DB into something more useful for the client"
+  [{:keys [collection_id collection_name] :as row} {:keys [score match column] :as hit}]
+  (-> row
+      (assoc
+       :matched_column column
+       :matched_text match
+       :score score
+       :collection {:id collection_id :name collection_name})))
+
 (defn accumulate-top-results
   "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) sent to it"
   ([] (PriorityQueue. search-config/max-filtered-results compare-score-and-result))
@@ -140,11 +150,9 @@
   "Returns a pair of [score, result] or nil. The score is a vector of comparable things in priority order. The result
   has `:matched_column` and `matched_text` injected in"
   [query-string result]
-  (let [{:keys [score column match] :as hit} (score-with-match query-string result)]
+  (let [hit (score-with-match query-string result)]
     (and hit
-         [[(- score)
+         [[(- (:score hit))
            (model->sort-position (:model result))
-           (:name result)]
-          (assoc result
-                 :matched_column column
-                 :matched_text match)])))
+           (:name result)],
+          (serialize result hit)])))
